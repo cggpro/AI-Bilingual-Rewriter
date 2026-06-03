@@ -1,2 +1,15 @@
 # AI-Bilingual-Rewriter
-AI Bilingual Rewriter
+ AI 双语改写器是一款基于 DeepSeek AI 的智能文本改写工具，支持中文和英文双向处理。
+
+  ✨ 三种改写风格：
+  • 贴近原文 — 保持原意，仅润色优化
+  • 口语化 — 轻松自然的对话风格
+  • 正式 — 专业商务书面表达
+
+  🚀 三种唤起方式：
+  • 双击 Shift → 英文输出
+  • 双击 Ctrl → 中文输出
+  • 选中文字右键 → 选择风格
+  • Alt+Shift+W → 打开侧边栏
+
+  🔒 隐私安全：API Key 和改写历史仅存储在本地浏览器，文本直接发送至 DeepSeek API，不会被开发者收集。
