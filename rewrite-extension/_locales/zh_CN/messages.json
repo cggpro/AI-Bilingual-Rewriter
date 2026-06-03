@@ -1,0 +1,6 @@
+{
+  "appName": { "message": "AI 双语改写器" },
+  "appDesc": { "message": "使用 DeepSeek AI 智能改写中英文文本，支持贴近原文、口语化和正式三种风格，双击 Shift/Ctrl 极速唤起" },
+  "openPanel": { "message": "打开 AI 改写面板" },
+  "cmdRewriteSelection": { "message": "改写选中的文本" }
+}

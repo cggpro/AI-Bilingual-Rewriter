@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="stylesheet" href="panel.css">
+</head>
+<body>
+  <header class="panel-header">
+    <h1 class="app-title">AI Rewriter</h1>
+    <div class="header-actions">
+      <button id="historyToggle" class="icon-btn" title="历史记录">📜</button>
+      <button id="settingsBtn" class="icon-btn" title="设置">⚙️</button>
+    </div>
+  </header>
+
+  <div id="apiKeyWarning" class="warning-banner hidden">
+    ⚠️ 未配置 API Key，<a href="#" id="openSettings">前往设置</a>
+  </div>
+
+  <div class="input-section">
+    <div class="input-header">
+      <span class="input-label">输入原文（中文或英文）</span>
+      <button id="clearSourceBtn" class="text-btn-small">清空</button>
+    </div>
+    <textarea id="sourceText" placeholder="在此粘贴或输入文本，或在网页上选中文字后双击 Shift 键..." rows="3"></textarea>
+    <button id="rewriteBtn" class="primary-btn" disabled>
+      <span>✨ 改写</span>
+    </button>
+  </div>
+
+  <!-- Three result panels -->
+  <div id="resultsArea" class="results-area hidden">
+    <div class="result-panel" data-style="close">
+      <div class="rp-header" data-toggle="close">
+        <span class="rp-label">📝 贴近原文</span>
+        <span class="rp-status">等待中...</span>
+      </div>
+      <div class="rp-body open" id="rpBody-close">
+        <div class="rp-loading" id="rpLoading-close"><span class="mini-spinner"></span>改写中...</div>
+        <div class="rp-error hidden" id="rpError-close"></div>
+        <div class="rp-content" id="rpContent-close"></div>
+        <div class="rp-note" id="rpNote-close"></div>
+        <div class="rp-actions" id="rpActions-close">
+          <button class="rp-action-btn primary rp-replace-btn" data-style="close">🔄 替换到页面</button>
+          <button class="rp-action-btn rp-copy-btn" data-style="close">📋 复制</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="result-panel" data-style="casual">
+      <div class="rp-header" data-toggle="casual">
+        <span class="rp-label">💬 口语化</span>
+        <span class="rp-status">等待中...</span>
+      </div>
+      <div class="rp-body open" id="rpBody-casual">
+        <div class="rp-loading" id="rpLoading-casual"><span class="mini-spinner"></span>改写中...</div>
+        <div class="rp-error hidden" id="rpError-casual"></div>
+        <div class="rp-content" id="rpContent-casual"></div>
+        <div class="rp-note" id="rpNote-casual"></div>
+        <div class="rp-actions" id="rpActions-casual">
+          <button class="rp-action-btn primary rp-replace-btn" data-style="casual">🔄 替换到页面</button>
+          <button class="rp-action-btn rp-copy-btn" data-style="casual">📋 复制</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="result-panel" data-style="formal">
+      <div class="rp-header" data-toggle="formal">
+        <span class="rp-label">🏛️ 正式</span>
+        <span class="rp-status">等待中...</span>
+      </div>
+      <div class="rp-body open" id="rpBody-formal">
+        <div class="rp-loading" id="rpLoading-formal"><span class="mini-spinner"></span>改写中...</div>
+        <div class="rp-error hidden" id="rpError-formal"></div>
+        <div class="rp-content" id="rpContent-formal"></div>
+        <div class="rp-note" id="rpNote-formal"></div>
+        <div class="rp-actions" id="rpActions-formal">
+          <button class="rp-action-btn primary rp-replace-btn" data-style="formal">🔄 替换到页面</button>
+          <button class="rp-action-btn rp-copy-btn" data-style="formal">📋 复制</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- History -->
+  <div id="historyPanel" class="history-panel hidden">
+    <div class="history-header">
+      <h2>历史记录</h2>
+      <button id="clearHistoryBtn" class="text-btn">清除全部</button>
+    </div>
+    <div id="historyList" class="history-list"></div>
+    <div id="emptyHistory" class="empty-state hidden">暂无改写记录</div>
+  </div>
+
+  <script src="../shared/constants.js"></script>
+  <script src="../shared/api.js"></script>
+  <script src="../shared/prompts.js"></script>
+  <script src="panel.js"></script>
+</body>
+</html>

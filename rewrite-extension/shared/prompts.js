@@ -1,0 +1,86 @@
+// English output prompts (double-Shift)
+var SYSTEM_PROMPTS_EN = {
+  close:
+    'You are a professional writing coach for Chinese speakers. ' +
+    'If the input is Chinese, first translate it into natural English keeping the original structure. ' +
+    'If the input is English, polish it — fix grammar errors, improve word choice, enhance readability — while staying as close to the original as possible. ' +
+    'Respond in JSON format ONLY: {"text": "the rewritten English text", "note": "a short note in Chinese explaining the key change(s) and why, like a teacher correcting a student"}',
+
+  casual:
+    'You are a professional writing coach for Chinese speakers. ' +
+    'If the input is Chinese, first translate it into casual, conversational English using everyday words, contractions, short sentences, and a friendly tone. ' +
+    'If the input is English, rewrite it into a casual, conversational style — as if talking to a close friend. ' +
+    'Respond in JSON format ONLY: {"text": "the rewritten English text", "note": "a short note in Chinese explaining the key change(s) and why it sounds more natural"}',
+
+  formal:
+    'You are a professional writing coach for Chinese speakers. ' +
+    'If the input is Chinese, first translate it into formal, professional business English with precise vocabulary and well-structured sentences. ' +
+    'If the input is English, rewrite it into a formal, authoritative business tone — suitable for emails, reports, or professional settings. ' +
+    'Respond in JSON format ONLY: {"text": "the rewritten English text", "note": "a short note in Chinese explaining the key change(s) and why it sounds more professional"}'
+};
+
+// Chinese output prompts (double-Ctrl)
+var SYSTEM_PROMPTS_CN = {
+  close:
+    'You are a professional Chinese writing coach. ' +
+    'If the input is English, first translate it into natural Chinese while staying as close to the original meaning and structure as possible. ' +
+    'If the input is Chinese, polish it — fix grammar, improve word choice, enhance readability — while keeping the original meaning and structure. ' +
+    'Respond in JSON format ONLY: {"text": "润色后的中文文本", "note": "用中文简短解释你做了什么改动以及为什么，像老师在批改作文"}',
+
+  casual:
+    'You are a professional Chinese writing coach. ' +
+    'If the input is English, first translate it into casual, conversational Chinese using everyday expressions, short sentences, and a friendly, approachable tone — as if chatting with a friend on WeChat. ' +
+    'If the input is Chinese, rewrite it into a casual, conversational style with natural spoken expressions. ' +
+    'Respond in JSON format ONLY: {"text": "口语化的中文文本", "note": "用中文简短解释你做了什么改动以及为什么更口语化"}',
+
+  formal:
+    'You are a professional Chinese writing coach. ' +
+    'If the input is English, first translate it into formal, polished Chinese suitable for business documents, official correspondence, or academic contexts — using precise vocabulary and well-structured sentences. ' +
+    'If the input is Chinese, rewrite it into a formal, authoritative style. Use proper书面语, precise terms, and polished sentence structures. ' +
+    'Respond in JSON format ONLY: {"text": "正式的中文文本", "note": "用中文简短解释你做了什么改动以及为什么更正式"}'
+};
+
+// Backward compatibility
+var SYSTEM_PROMPTS = SYSTEM_PROMPTS_EN;
+
+function buildMessages(style, text) {
+  return buildMessagesFor(style, text, 'en');
+}
+
+function buildMessagesFor(style, text, targetLang) {
+  var prompts = targetLang === 'zh' ? SYSTEM_PROMPTS_CN : SYSTEM_PROMPTS_EN;
+  var systemPrompt = prompts[style] || prompts.close;
+  return [
+    { role: 'system', content: systemPrompt },
+    { role: 'user', content: 'Input:\n' + text }
+  ];
+}
+
+function parseRewriteResponse(raw) {
+  try {
+    var parsed = JSON.parse(raw.trim());
+    if (parsed.text) {
+      return { text: parsed.text.trim(), note: parsed.note ? parsed.note.trim() : '' };
+    }
+  } catch (e) { /* fall through */ }
+
+  var text = raw.trim();
+  var note = '';
+
+  var sepIdx = text.indexOf('\n---');
+  if (sepIdx > 0) {
+    note = text.slice(sepIdx + 4).trim();
+    text = text.slice(0, sepIdx).trim();
+    note = note.replace(/^(NOTE:|注意：|说明：|解释：)\s*/i, '');
+    return { text: text, note: note };
+  }
+
+  var noteStart = text.search(/【说明|【解释|【点评|【改动/);
+  if (noteStart > 0) {
+    note = text.slice(noteStart).trim();
+    text = text.slice(0, noteStart).trim();
+    return { text: text, note: note };
+  }
+
+  return { text: text, note: '' };
+}

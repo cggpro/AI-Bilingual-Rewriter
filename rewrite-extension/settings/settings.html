@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AI Rewriter — 设置</title>
+  <link rel="stylesheet" href="settings.css">
+</head>
+<body>
+  <div class="settings-container">
+    <header class="settings-header">
+      <h1>设置</h1>
+    </header>
+
+    <!-- API Key -->
+    <section class="settings-section">
+      <h2>DeepSeek API 配置</h2>
+      <div class="form-group">
+        <label for="apiKey">API Key</label>
+        <div class="api-key-input-group">
+          <input type="password" id="apiKey" placeholder="sk-..." autocomplete="off" spellcheck="false">
+          <button id="toggleKeyVisibility" class="icon-btn" title="显示/隐藏">👁️</button>
+        </div>
+        <p class="help-text">
+          输入你的 DeepSeek API Key，在
+          <a href="https://platform.deepseek.com/api_keys" target="_blank" rel="noopener">platform.deepseek.com</a>
+          获取
+        </p>
+      </div>
+      <div class="form-actions">
+        <button id="testApiBtn" class="secondary-btn">测试连接</button>
+        <button id="saveApiKeyBtn" class="primary-btn">保存 API Key</button>
+      </div>
+      <div id="apiStatus" class="status-message hidden"></div>
+    </section>
+
+    <!-- Model -->
+    <section class="settings-section">
+      <h2>模型设置</h2>
+      <div class="form-group">
+        <label for="modelSelect">模型</label>
+        <select id="modelSelect">
+          <option value="deepseek-v4-flash">DeepSeek V4 Flash (快速)</option>
+          <option value="deepseek-v4-pro">DeepSeek V4 Pro (高质量)</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label for="temperatureRange">温度: <span id="tempValue">0.7</span></label>
+        <input type="range" id="temperatureRange" min="0" max="1.5" step="0.1" value="0.7">
+        <p class="help-text">越低越精确，越高越有创意</p>
+      </div>
+    </section>
+
+    <!-- Data -->
+    <section class="settings-section danger-section">
+      <h2>数据管理</h2>
+      <div class="form-group">
+        <label>改写历史</label>
+        <p class="help-text" id="historyCount">0 条记录</p>
+        <button id="clearHistoryBtn" class="danger-btn">清除全部历史</button>
+      </div>
+    </section>
+
+    <!-- Privacy -->
+    <section class="settings-section">
+      <h2>隐私说明</h2>
+      <div class="privacy-content">
+        <p>本扩展<strong>不会收集或上传</strong>你的任何个人信息。</p>
+        <ul>
+          <li><strong>API Key</strong>：存储在浏览器本地（chrome.storage.local），仅用于调用 DeepSeek API，不会发送到其他任何服务器。</li>
+          <li><strong>改写文本</strong>：你在扩展中输入或选中的文本会直接发送到 <code>api.deepseek.com</code> 以生成改写结果。文本<strong>不会被</strong>本扩展开发者收集或存储。</li>
+          <li><strong>改写历史</strong>：仅存储在你本地浏览器中，随时可以清除。</li>
+          <li><strong>第三方服务</strong>：DeepSeek 的隐私政策请参见 <a href="https://platform.deepseek.com/privacy" target="_blank" rel="noopener">platform.deepseek.com/privacy</a>。</li>
+        </ul>
+      </div>
+    </section>
+
+    <!-- About -->
+    <section class="settings-section about-section">
+      <h2>关于</h2>
+      <p class="help-text" id="versionText">AI Rewriter</p>
+      <p class="help-text">
+        使用 DeepSeek API 驱动。<br>
+        支持中英文双向改写，贴近原文 / 口语化 / 正式三种风格。<br>
+        快捷键：双击 Shift（英文输出）/ 双击 Ctrl（中文输出）/ Alt+Shift+W。
+      </p>
+    </section>
+  </div>
+
+  <script src="../shared/constants.js"></script>
+  <script src="settings.js"></script>
+</body>
+</html>
