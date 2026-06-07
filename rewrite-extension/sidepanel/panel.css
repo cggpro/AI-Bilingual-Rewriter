@@ -352,7 +352,7 @@ body {
 .rp-actions {
   display: flex;
   gap: 4px;
-  padding: 0 12px 8px;
+  padding: 6px 12px 8px;
   opacity: 0;
   pointer-events: none;
   transition: opacity 0.2s ease;
@@ -392,6 +392,17 @@ body {
   border-color: var(--accent-hover);
 }
 
+.rp-speak-btn.speaking {
+  background: var(--error-bg);
+  border-color: rgba(255, 59, 48, 0.3);
+  color: var(--error);
+}
+
+.text-btn-small.speaking {
+  color: var(--error);
+  background: var(--error-bg);
+}
+
 @media (prefers-color-scheme: dark) {
   .rp-action-btn {
     border-color: rgba(255, 255, 255, 0.1);
@@ -412,6 +423,17 @@ body {
   .rp-action-btn.primary:hover {
     background: var(--accent-hover);
     border-color: var(--accent-hover);
+  }
+
+  .rp-speak-btn.speaking {
+    background: rgba(255, 69, 58, 0.12);
+    border-color: rgba(255, 69, 58, 0.3);
+    color: var(--error);
+  }
+
+  .text-btn-small.speaking {
+    color: var(--error);
+    background: var(--error-bg);
   }
 
   .rp-note {

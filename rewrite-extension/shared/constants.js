@@ -3,7 +3,8 @@ const STORAGE_KEYS = {
   LANGUAGE: 'ui_language',
   HISTORY: 'rewrite_history',
   MODEL: 'model',
-  TEMPERATURE: 'temperature'
+  TEMPERATURE: 'temperature',
+  TTS_RATE: 'tts_rate'
 };
 
 const REWRITE_STYLES = {

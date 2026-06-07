@@ -17,9 +17,37 @@ function setupEvents() {
   $('sourceText').addEventListener('keydown', function(e) { if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') { e.preventDefault(); var t = $('sourceText').value.trim(); if (t) doRewrite(t); } });
   $('sourceText').addEventListener('input', function() { $('rewriteBtn').disabled = !$('sourceText').value.trim(); });
   $('clearSourceBtn').addEventListener('click', function() { $('sourceText').value = ''; $('rewriteBtn').disabled = true; $('resultsArea').classList.add('hidden'); $('historyPanel').classList.add('hidden'); });
+  $('speakSourceBtn').addEventListener('click', function() {
+    var text = $('sourceText').value.trim();
+    if (!text) return;
+    var btn = $('speakSourceBtn');
+    if (TTS.isSpeaking()) { TTS.stop(); resetSpBtn(btn); return; }
+    getTtsRate().then(function(rate) {
+      TTS.speak(text, 'auto', {
+        onStart: function() { btn.textContent = '⏹️ 停止'; btn.classList.add('speaking'); },
+        onEnd: function() { resetSpBtn(btn); },
+        onError: function() { resetSpBtn(btn); }
+      }, rate);
+    });
+  });
 
   document.querySelectorAll('.rp-header').forEach(function(h) {
     h.addEventListener('click', function() { $('rpBody-' + h.dataset.toggle).classList.toggle('open'); });
+  });
+  document.querySelectorAll('.rp-speak-btn').forEach(function(b) {
+    b.addEventListener('click', function(e) {
+      e.stopPropagation();
+      var text = sideResults[b.dataset.style];
+      if (!text) return;
+      if (TTS.isSpeaking()) { TTS.stop(); resetAllSpBtns(); return; }
+      getTtsRate().then(function(rate) {
+        TTS.speak(text, 'en-US', {
+          onStart: function() { b.textContent = '⏹️ 停止'; b.classList.add('speaking'); },
+          onEnd: function() { resetAllSpBtns(); },
+          onError: function() { resetAllSpBtns(); }
+        }, rate);
+      });
+    });
   });
   document.querySelectorAll('.rp-copy-btn').forEach(function(b) {
     b.addEventListener('click', function(e) { e.stopPropagation(); doCopy(sideResults[b.dataset.style], b); });
@@ -58,6 +86,7 @@ async function doRewrite(text) {
   });
 }
 
+// ─── REWRITE VIA SHARED SERVICE ───
 async function callApi(style, text) {
   try {
     var stg = await chrome.storage.local.get([STORAGE_KEYS.API_KEY, STORAGE_KEYS.MODEL, STORAGE_KEYS.TEMPERATURE]);
@@ -66,29 +95,31 @@ async function callApi(style, text) {
 
     var model = stg[STORAGE_KEYS.MODEL] || 'deepseek-v4-flash';
     var temp = stg[STORAGE_KEYS.TEMPERATURE] != null ? parseFloat(stg[STORAGE_KEYS.TEMPERATURE]) : 0.7;
-    var msgs = buildMessages(style, text);
 
     var ctrl = new AbortController(); var tid = setTimeout(function() { ctrl.abort(); }, 30000);
-    var resp = await fetch('https://api.deepseek.com/v1/chat/completions', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + apiKey },
-      body: JSON.stringify({ model: model, messages: msgs, stream: false, max_tokens: 4096, temperature: temp }),
-      signal: ctrl.signal
+    var panelContent = $('rpContent-' + style);
+
+    var result = await rewriteText({
+      text: text,
+      style: style,
+      targetLang: 'en',
+      apiKey: apiKey,
+      model: model,
+      temperature: temp,
+      stream: true,
+      signal: ctrl.signal,
+      onToken: function(delta, accumulated) {
+        if (panelContent) panelContent.textContent = accumulated;
+      }
     });
+
     clearTimeout(tid);
     $('rpLoading-' + style).classList.add('done');
 
-    if (!resp.ok) { var eb = ''; try { eb = await resp.text(); } catch (e) { /* */ } showSErr(style, parseApiError(resp.status, eb).message); setSStat(style, '失败'); checkDone(); return; }
-
-    var data = await resp.json();
-    var raw = data.choices && data.choices[0] && data.choices[0].message && data.choices[0].message.content;
-    if (!raw) { showSErr(style, ERROR_MESSAGES.EMPTY_RESPONSE); setSStat(style, '空响应'); checkDone(); return; }
-
-    var parsed = parseRewriteResponse(raw);
-    sideResults[style] = parsed.text;
-    saveToHistory(text, parsed.text, style, parsed.note || '');
-    $('rpContent-' + style).textContent = parsed.text;
-    if (parsed.note) { $('rpNote-' + style).textContent = parsed.note; $('rpNote-' + style).classList.add('visible'); }
+    sideResults[style] = result.text;
+    saveToHistory(text, result.text, style, result.note || '');
+    $('rpContent-' + style).textContent = result.text;
+    if (result.note) { $('rpNote-' + style).textContent = result.note; $('rpNote-' + style).classList.add('visible'); }
     $('rpActions-' + style).classList.add('visible');
     setSStat(style, '✓ 完成');
 
@@ -149,3 +180,17 @@ function doCopy(text, btn) {
 function fbCopy(text, btn) { try { var ta = document.createElement('textarea'); ta.value = text; ta.style.cssText = 'position:fixed;left:-9999px;top:-9999px'; ta.setAttribute('readonly',''); document.body.appendChild(ta); ta.focus(); ta.select(); ta.setSelectionRange(0, ta.value.length); document.execCommand('copy'); document.body.removeChild(ta); flash(btn); } catch (e) { btn.textContent = '❌'; setTimeout(function() { btn.textContent = '📋 复制'; }, 2000); } }
 function flash(btn) { btn.textContent = '✅ 已复制'; setTimeout(function() { btn.textContent = '📋 复制'; }, 2000); }
 function esc(s) { var d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
+
+// ─── TTS button helpers ───
+function resetSpBtn(btn) { btn.textContent = '🔊 朗读'; btn.classList.remove('speaking'); }
+function resetAllSpBtns() {
+  document.querySelectorAll('.rp-speak-btn').forEach(function(b) { resetSpBtn(b); });
+  var src = $('speakSourceBtn');
+  if (src) resetSpBtn(src);
+}
+function getTtsRate() {
+  return chrome.storage.local.get(STORAGE_KEYS.TTS_RATE).then(function(r) {
+    var v = r[STORAGE_KEYS.TTS_RATE];
+    return (v != null) ? parseFloat(v) : 0.85;
+  }).catch(function() { return 0.85; });
+}

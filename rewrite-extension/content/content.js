@@ -26,7 +26,7 @@ function createFloatingCard() {
     { key: 'formal', icon: '🏛️', labelEn: 'Formal', labelZh: '正式', hintEn: 'professional tone', hintZh: '专业商务书面表达' }
   ];
 
-  var h = '<div class="card-header"><span class="card-header-text" id="cardTitle">Rewrite</span><button class="card-close">×</button></div>';
+  var h = '<div class="card-header"><span class="card-header-text" id="cardTitle">Rewrite</span><button class="card-speak-original" id="cardSpeakOriginal" title="朗读原文">🔊</button><button class="card-close">×</button></div>';
   h += '<div class="card-preview" id="cardPreview"></div><div class="card-results">';
 
   styles.forEach(function(s) {
@@ -39,16 +39,31 @@ function createFloatingCard() {
     h += '<div class="result-panel-error hidden" id="panelError-' + s.key + '"></div>';
     h += '<div class="result-panel-content" id="panelContent-' + s.key + '"></div>';
     h += '<div class="result-panel-note" id="panelNote-' + s.key + '"></div>';
+    h += '</div>';
     h += '<div class="result-panel-actions" id="panelActions-' + s.key + '">';
     h += '<button class="panel-action-btn primary panel-replace-btn" data-style="' + s.key + '">🔄 替换</button>';
+    h += '<button class="panel-action-btn panel-speak-btn" data-style="' + s.key + '">🔊 朗读</button>';
     h += '<button class="panel-action-btn panel-copy-btn" data-style="' + s.key + '">📋 复制</button>';
-    h += '</div></div></div>';
+    h += '</div></div>';
   });
   h += '</div>';
   floatingCard.innerHTML = h;
   document.body.appendChild(floatingCard);
 
   floatingCard.querySelector('.card-close').addEventListener('click', hideCard);
+  floatingCard.querySelector('#cardSpeakOriginal').addEventListener('click', function() {
+    var text = selectionText;
+    if (!text) return;
+    var btn = floatingCard.querySelector('#cardSpeakOriginal');
+    if (TTS.isSpeaking()) { TTS.stop(); resetSpeakBtn(btn); return; }
+    getTtsRate().then(function(rate) {
+      TTS.speak(text, 'auto', {
+        onStart: function() { btn.textContent = '⏹️ 停止'; btn.classList.add('speaking'); },
+        onEnd: function() { resetSpeakBtn(btn); },
+        onError: function() { resetSpeakBtn(btn); }
+      }, rate);
+    });
+  });
   floatingCard.querySelectorAll('.result-panel-header').forEach(function(hdr) {
     hdr.addEventListener('click', function() {
       floatingCard.querySelector('#panelBody-' + hdr.dataset.toggle).classList.toggle('open');
@@ -57,12 +72,29 @@ function createFloatingCard() {
   floatingCard.querySelectorAll('.panel-copy-btn').forEach(function(btn) {
     btn.addEventListener('click', function(e) { e.stopPropagation(); doCopy(cardResults[btn.dataset.style], btn); });
   });
+  floatingCard.querySelectorAll('.panel-speak-btn').forEach(function(btn) {
+    btn.addEventListener('click', function(e) {
+      e.stopPropagation();
+      var style = btn.dataset.style;
+      var text = cardResults[style];
+      if (!text) return;
+      if (TTS.isSpeaking()) { TTS.stop(); resetAllSpeakBtns(); return; }
+      var lang = currentTargetLang === 'zh' ? 'zh-CN' : 'en-US';
+      getTtsRate().then(function(rate) {
+        TTS.speak(text, lang, {
+          onStart: function() { btn.textContent = '⏹️ 停止'; btn.classList.add('speaking'); },
+          onEnd: function() { resetAllSpeakBtns(); },
+          onError: function() { resetAllSpeakBtns(); }
+        }, rate);
+      });
+    });
+  });
   floatingCard.querySelectorAll('.panel-replace-btn').forEach(function(btn) {
     btn.addEventListener('click', function(e) { e.stopPropagation(); doReplace(btn.dataset.style, btn); });
   });
   document.addEventListener('mousedown', function(e) { if (isCardVisible && !floatingCard.contains(e.target)) hideCard(); });
   document.addEventListener('keydown', function(e) { if (e.key === 'Escape' && isCardVisible) hideCard(); });
-  document.addEventListener('scroll', function() { if (isCardVisible) hideCard(); }, true);
+  document.addEventListener('scroll', function(e) { if (isCardVisible && !floatingCard.contains(e.target)) hideCard(); }, true);
 }
 
 // ─── LISTENERS ───
@@ -273,9 +305,22 @@ function showCard(text, targetLang) {
     callDeepSeek(s, text, currentTargetLang);
   });
 }
-function hideCard() { floatingCard.style.display = 'none'; isCardVisible = false; }
+function hideCard() { TTS.stop(); floatingCard.style.display = 'none'; isCardVisible = false; }
+function resetSpeakBtn(btn) { btn.textContent = '🔊'; btn.classList.remove('speaking'); }
+function resetAllSpeakBtns() {
+  var btns = floatingCard.querySelectorAll('.panel-speak-btn');
+  btns.forEach(function(b) { resetSpeakBtn(b); });
+  var orig = floatingCard.querySelector('#cardSpeakOriginal');
+  if (orig) resetSpeakBtn(orig);
+}
+function getTtsRate() {
+  return chrome.storage.local.get(STORAGE_KEYS.TTS_RATE).then(function(r) {
+    var v = r[STORAGE_KEYS.TTS_RATE];
+    return (v != null) ? parseFloat(v) : 0.85;
+  }).catch(function() { return 0.85; });
+}
 
-// ─── DIRECT API CALL ───
+// ─── REWRITE VIA SHARED SERVICE ───
 async function callDeepSeek(style, text, targetLang) {
   try {
     var stg = await chrome.storage.local.get([STORAGE_KEYS.API_KEY, STORAGE_KEYS.MODEL, STORAGE_KEYS.TEMPERATURE]);
@@ -284,35 +329,34 @@ async function callDeepSeek(style, text, targetLang) {
 
     var model = stg[STORAGE_KEYS.MODEL] || 'deepseek-v4-flash';
     var temp = stg[STORAGE_KEYS.TEMPERATURE] != null ? parseFloat(stg[STORAGE_KEYS.TEMPERATURE]) : 0.7;
-    var msgs = buildMessagesFor(style, text, targetLang);
 
     var ctrl = new AbortController();
     var tid = setTimeout(function() { ctrl.abort(); }, 30000);
+    var panelContent = document.getElementById('panelContent-' + style);
 
-    var resp = await fetch('https://api.deepseek.com/v1/chat/completions', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + apiKey },
-      body: JSON.stringify({ model: model, messages: msgs, stream: false, max_tokens: 4096, temperature: temp }),
-      signal: ctrl.signal
+    var result = await rewriteText({
+      text: text,
+      style: style,
+      targetLang: targetLang,
+      apiKey: apiKey,
+      model: model,
+      temperature: temp,
+      stream: true,
+      signal: ctrl.signal,
+      onToken: function(delta, accumulated) {
+        if (panelContent) panelContent.textContent = accumulated;
+      }
     });
+
     clearTimeout(tid);
     document.getElementById('panelLoading-' + style).classList.add('done');
 
-    if (!resp.ok) {
-      var eb = ''; try { eb = await resp.text(); } catch (e) { /* */ }
-      showErr(style, parseApiError(resp.status, eb).message); setStatus(style, '失败'); return;
-    }
-
-    var data = await resp.json();
-    var raw = data.choices && data.choices[0] && data.choices[0].message && data.choices[0].message.content;
-    if (!raw) { showErr(style, ERROR_MESSAGES.EMPTY_RESPONSE); setStatus(style, '空响应'); return; }
-
-    var parsed = parseRewriteResponse(raw);
-    cardResults[style] = parsed.text; cardNotes[style] = parsed.note || '';
-    saveToHistory(text, parsed.text, style, parsed.note || '');
-    document.getElementById('panelContent-' + style).textContent = parsed.text;
-    if (parsed.note) {
-      document.getElementById('panelNote-' + style).textContent = parsed.note;
+    cardResults[style] = result.text;
+    cardNotes[style] = result.note || '';
+    saveToHistory(text, result.text, style, result.note || '');
+    document.getElementById('panelContent-' + style).textContent = result.text;
+    if (result.note) {
+      document.getElementById('panelNote-' + style).textContent = result.note;
       document.getElementById('panelNote-' + style).classList.add('visible');
     }
     document.getElementById('panelActions-' + style).classList.add('visible');

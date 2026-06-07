@@ -21,6 +21,7 @@
   <div class="input-section">
     <div class="input-header">
       <span class="input-label">输入原文（中文或英文）</span>
+      <button id="speakSourceBtn" class="text-btn-small">🔊 朗读</button>
       <button id="clearSourceBtn" class="text-btn-small">清空</button>
     </div>
     <textarea id="sourceText" placeholder="在此粘贴或输入文本，或在网页上选中文字后双击 Shift 键..." rows="3"></textarea>
@@ -41,10 +42,11 @@
         <div class="rp-error hidden" id="rpError-close"></div>
         <div class="rp-content" id="rpContent-close"></div>
         <div class="rp-note" id="rpNote-close"></div>
-        <div class="rp-actions" id="rpActions-close">
-          <button class="rp-action-btn primary rp-replace-btn" data-style="close">🔄 替换到页面</button>
-          <button class="rp-action-btn rp-copy-btn" data-style="close">📋 复制</button>
-        </div>
+      </div>
+      <div class="rp-actions" id="rpActions-close">
+        <button class="rp-action-btn primary rp-replace-btn" data-style="close">🔄 替换到页面</button>
+        <button class="rp-action-btn rp-speak-btn" data-style="close">🔊 朗读</button>
+        <button class="rp-action-btn rp-copy-btn" data-style="close">📋 复制</button>
       </div>
     </div>
 
@@ -58,10 +60,11 @@
         <div class="rp-error hidden" id="rpError-casual"></div>
         <div class="rp-content" id="rpContent-casual"></div>
         <div class="rp-note" id="rpNote-casual"></div>
-        <div class="rp-actions" id="rpActions-casual">
-          <button class="rp-action-btn primary rp-replace-btn" data-style="casual">🔄 替换到页面</button>
-          <button class="rp-action-btn rp-copy-btn" data-style="casual">📋 复制</button>
-        </div>
+      </div>
+      <div class="rp-actions" id="rpActions-casual">
+        <button class="rp-action-btn primary rp-replace-btn" data-style="casual">🔄 替换到页面</button>
+        <button class="rp-action-btn rp-speak-btn" data-style="casual">🔊 朗读</button>
+        <button class="rp-action-btn rp-copy-btn" data-style="casual">📋 复制</button>
       </div>
     </div>
 
@@ -75,10 +78,11 @@
         <div class="rp-error hidden" id="rpError-formal"></div>
         <div class="rp-content" id="rpContent-formal"></div>
         <div class="rp-note" id="rpNote-formal"></div>
-        <div class="rp-actions" id="rpActions-formal">
-          <button class="rp-action-btn primary rp-replace-btn" data-style="formal">🔄 替换到页面</button>
-          <button class="rp-action-btn rp-copy-btn" data-style="formal">📋 复制</button>
-        </div>
+      </div>
+      <div class="rp-actions" id="rpActions-formal">
+        <button class="rp-action-btn primary rp-replace-btn" data-style="formal">🔄 替换到页面</button>
+        <button class="rp-action-btn rp-speak-btn" data-style="formal">🔊 朗读</button>
+        <button class="rp-action-btn rp-copy-btn" data-style="formal">📋 复制</button>
       </div>
     </div>
   </div>
@@ -94,8 +98,11 @@
   </div>
 
   <script src="../shared/constants.js"></script>
+  <script src="../shared/logger.js"></script>
   <script src="../shared/api.js"></script>
   <script src="../shared/prompts.js"></script>
+  <script src="../shared/rewrite-service.js"></script>
+  <script src="../shared/tts.js"></script>
   <script src="panel.js"></script>
 </body>
 </html>

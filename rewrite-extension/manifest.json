@@ -1,11 +1,11 @@
 {
   "manifest_version": 3,
   "name": "__MSG_appName__",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "__MSG_appDesc__",
   "default_locale": "zh_CN",
   "author": "rewrite-extension",
-  "homepage_url": "https://github.com/your-org/rewrite-extension",
+  "homepage_url": "https://github.com/cggpro/AI-Bilingual-Rewriter",
   "permissions": [
     "storage",
     "sidePanel",
@@ -34,7 +34,7 @@
   "content_scripts": [
     {
       "matches": ["<all_urls>"],
-      "js": ["shared/constants.js", "shared/api.js", "shared/prompts.js", "content/content.js"],
+      "js": ["shared/constants.js", "shared/logger.js", "shared/api.js", "shared/prompts.js", "shared/rewrite-service.js", "shared/tts.js", "content/content.js"],
       "css": ["content/content.css"],
       "run_at": "document_end",
       "all_frames": true,

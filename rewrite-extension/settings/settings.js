@@ -10,6 +10,8 @@ var temperatureRange = $('temperatureRange');
 var tempValue = $('tempValue');
 var clearHistoryBtn = $('clearHistoryBtn');
 var historyCount = $('historyCount');
+var ttsRateRange = $('ttsRateRange');
+var ttsRateValue = $('ttsRateValue');
 
 // Read from chrome.storage.local directly — no service worker needed
 document.addEventListener('DOMContentLoaded', async function() {
@@ -30,7 +32,7 @@ async function loadVersion() {
 async function loadSettings() {
   try {
     var result = await chrome.storage.local.get([
-      STORAGE_KEYS.API_KEY, STORAGE_KEYS.MODEL, STORAGE_KEYS.TEMPERATURE, STORAGE_KEYS.HISTORY
+      STORAGE_KEYS.API_KEY, STORAGE_KEYS.MODEL, STORAGE_KEYS.TEMPERATURE, STORAGE_KEYS.HISTORY, STORAGE_KEYS.TTS_RATE
     ]);
 
     if (result[STORAGE_KEYS.API_KEY]) apiKeyInput.value = result[STORAGE_KEYS.API_KEY];
@@ -38,6 +40,10 @@ async function loadSettings() {
     if (result[STORAGE_KEYS.TEMPERATURE] != null) {
       temperatureRange.value = result[STORAGE_KEYS.TEMPERATURE];
       tempValue.textContent = result[STORAGE_KEYS.TEMPERATURE];
+    }
+    if (result[STORAGE_KEYS.TTS_RATE] != null) {
+      ttsRateRange.value = result[STORAGE_KEYS.TTS_RATE];
+      ttsRateValue.textContent = result[STORAGE_KEYS.TTS_RATE];
     }
     var entries = result[STORAGE_KEYS.HISTORY] || [];
     historyCount.textContent = entries.length + ' 条记录';
@@ -126,6 +132,15 @@ function setupEventListeners() {
     var s = {}; s[STORAGE_KEYS.TEMPERATURE] = parseFloat(temperatureRange.value);
     await chrome.storage.local.set(s);
     showStatus('温度已更新。', 'success');
+  });
+
+  ttsRateRange.addEventListener('input', function() {
+    ttsRateValue.textContent = ttsRateRange.value;
+  });
+  ttsRateRange.addEventListener('change', async function() {
+    var s = {}; s[STORAGE_KEYS.TTS_RATE] = parseFloat(ttsRateRange.value);
+    await chrome.storage.local.set(s);
+    showStatus('朗读语速已更新。', 'success');
   });
 
   modelSelect.addEventListener('change', async function() {

@@ -1,4 +1,4 @@
-importScripts('shared/constants.js', 'shared/prompts.js', 'shared/api.js');
+importScripts('shared/constants.js', 'shared/logger.js', 'shared/prompts.js', 'shared/api.js', 'shared/rewrite-service.js', 'shared/tts.js');
 
 // --- CONTEXT MENU ---
 chrome.runtime.onInstalled.addListener(function() {
@@ -89,54 +89,34 @@ chrome.runtime.onMessage.addListener(function(message, sender, sendResponse) {
   return false;
 });
 
-// --- REWRITE HANDLER ---
+// --- REWRITE HANDLER (via shared service, non-streaming) ---
 async function handleRewrite(message, sender, sendResponse) {
-  var controller = new AbortController();
-  var timeoutId = setTimeout(function() { controller.abort(); }, API_CONFIG.TIMEOUT_MS);
-
   try {
     var storage = await chrome.storage.local.get([
       STORAGE_KEYS.API_KEY, STORAGE_KEYS.MODEL, STORAGE_KEYS.TEMPERATURE
     ]);
     var apiKey = storage[STORAGE_KEYS.API_KEY];
-    if (!apiKey) { clearTimeout(timeoutId); sendResponse({ success: false, error: ERROR_MESSAGES.NO_API_KEY }); return; }
+    if (!apiKey) { sendResponse({ success: false, error: ERROR_MESSAGES.NO_API_KEY }); return; }
 
     var model = storage[STORAGE_KEYS.MODEL] || API_CONFIG.MODEL;
     var temperature = storage[STORAGE_KEYS.TEMPERATURE] != null ? parseFloat(storage[STORAGE_KEYS.TEMPERATURE]) : API_CONFIG.TEMPERATURE;
-    var messages = buildMessages(message.style || 'close', message.text);
 
-    var response = await fetch(API_CONFIG.BASE_URL, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + apiKey },
-      body: JSON.stringify({ model: model, messages: messages, stream: false, max_tokens: API_CONFIG.MAX_TOKENS, temperature: temperature }),
-      signal: controller.signal
+    var result = await rewriteText({
+      text: message.text,
+      style: message.style || 'close',
+      targetLang: 'en',
+      apiKey: apiKey,
+      model: model,
+      temperature: temperature,
+      stream: false  // message-passing can't stream
     });
-    clearTimeout(timeoutId);
 
-    if (!response.ok) {
-      var eb = ''; try { eb = await response.text(); } catch (e) { /* */ }
-      var ei = parseApiError(response.status, eb);
-      sendResponse({ success: false, error: ei.message });
-      return;
-    }
+    sendResponse({ success: true, text: result.text, note: result.note || '' });
 
-    var data = await response.json();
-    var raw = data.choices && data.choices[0] && data.choices[0].message && data.choices[0].message.content;
-
-    if (!raw) { sendResponse({ success: false, error: ERROR_MESSAGES.EMPTY_RESPONSE }); return; }
-
-    var parsed = parseRewriteResponse(raw);
-    sendResponse({ success: true, text: parsed.text, note: parsed.note || '' });
-
-    saveSilent(message.text, parsed.text, message.style, parsed.note);
+    saveSilent(message.text, result.text, message.style, result.note);
 
   } catch (e) {
-    clearTimeout(timeoutId);
-    if (e.name === 'AbortError') {
-      sendResponse({ success: false, error: '请求超时（30秒），请检查网络连接后重试。' });
-    } else {
-      sendResponse({ success: false, error: e.message || ERROR_MESSAGES.NETWORK_ERROR });
-    }
+    sendResponse({ success: false, error: e.message || ERROR_MESSAGES.NETWORK_ERROR });
   }
 }
 

@@ -42,6 +42,34 @@
   letter-spacing: -0.01em;
 }
 
+#ai-rewriter-floating-card .card-speak-original {
+  width: 24px;
+  height: 24px;
+  border: none;
+  background: rgba(0, 0, 0, 0.04);
+  color: #86868B;
+  border-radius: 50%;
+  cursor: pointer;
+  font-size: 13px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.15s ease;
+  line-height: 1;
+  margin-right: 4px;
+}
+
+#ai-rewriter-floating-card .card-speak-original:hover {
+  background: rgba(0, 122, 255, 0.1);
+  color: #007AFF;
+}
+
+#ai-rewriter-floating-card .card-speak-original.speaking {
+  background: rgba(255, 59, 48, 0.1);
+  color: #FF3B30;
+  font-size: 11px;
+}
+
 #ai-rewriter-floating-card .card-close {
   width: 24px;
   height: 24px;
@@ -219,7 +247,7 @@
 #ai-rewriter-floating-card .result-panel-actions {
   display: flex;
   gap: 6px;
-  padding: 0 16px 10px;
+  padding: 8px 16px 10px;
   opacity: 0;
   transition: opacity 0.2s ease;
   pointer-events: none;
@@ -259,6 +287,12 @@
   border-color: #0066D6;
 }
 
+#ai-rewriter-floating-card .panel-speak-btn.speaking {
+  background: rgba(255, 59, 48, 0.08);
+  border-color: rgba(255, 59, 48, 0.3);
+  color: #FF3B30;
+}
+
 #ai-rewriter-floating-card .result-panel-error {
   padding: 8px 16px;
   font-size: 12px;
@@ -289,6 +323,21 @@
 
   #ai-rewriter-floating-card .card-header-text {
     color: #F5F5F7;
+  }
+
+  #ai-rewriter-floating-card .card-speak-original {
+    background: rgba(255, 255, 255, 0.08);
+    color: #98989D;
+  }
+
+  #ai-rewriter-floating-card .card-speak-original:hover {
+    background: rgba(10, 132, 255, 0.15);
+    color: #0A84FF;
+  }
+
+  #ai-rewriter-floating-card .card-speak-original.speaking {
+    background: rgba(255, 69, 58, 0.15);
+    color: #FF453A;
   }
 
   #ai-rewriter-floating-card .card-close {
@@ -360,6 +409,12 @@
   #ai-rewriter-floating-card .panel-action-btn.primary:hover {
     background: #0066D6;
     border-color: #0066D6;
+  }
+
+  #ai-rewriter-floating-card .panel-speak-btn.speaking {
+    background: rgba(255, 69, 58, 0.12);
+    border-color: rgba(255, 69, 58, 0.3);
+    color: #FF453A;
   }
 
   #ai-rewriter-floating-card .result-panel-error {
