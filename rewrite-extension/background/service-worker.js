@@ -25,14 +25,20 @@ chrome.commands.onCommand.addListener(async function(command) {
   try {
     var tabs = await chrome.tabs.query({ active: true, currentWindow: true });
     if (!tabs.length) return;
-    var results = await chrome.scripting.executeScript({
-      target: { tabId: tabs[0].id },
-      func: function() { return window.getSelection().toString(); }
-    });
-    if (results && results[0] && results[0].result) {
-      var text = results[0].result.trim();
-      if (text) await openSidePanelWithText(tabs[0], text, null);
+    var tab = tabs[0];
+    var text = '';
+    try {
+      var results = await chrome.scripting.executeScript({
+        target: { tabId: tab.id },
+        func: function() { return window.getSelection().toString(); }
+      });
+      if (results && results[0] && results[0].result) {
+        text = results[0].result.trim();
+      }
+    } catch (e) {
+      // Can't inject script on this page (e.g. chrome://, edge://) — still open side panel
     }
+    await openSidePanelWithText(tab, text || null, null);
   } catch (e) { /* */ }
 });
 

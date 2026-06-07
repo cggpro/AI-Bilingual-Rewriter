@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html><head><meta charset="UTF-8"><title>Icon Export</title>
+<style>
+  body { font-family: system-ui; max-width: 500px; margin: 40px auto; text-align: center; background: #f5f5f7; }
+  .preview { display: flex; gap: 20px; justify-content: center; flex-wrap: wrap; margin: 24px 0; background: #fff; padding: 24px; border-radius: 16px; }
+  .preview div { text-align: center; }
+  .preview img { border-radius: 8px; }
+  .preview .label { font-size: 11px; color: #86868b; margin-top: 4px; }
+  button { padding: 12px 28px; font-size: 16px; cursor: pointer; background: #007AFF; color: #fff; border: none; border-radius: 8px; font-weight: 600; }
+  button:hover { background: #0066D6; }
+  .sizes { display: flex; gap: 8px; justify-content: center; margin: 20px 0; }
+  .size-btn { padding: 6px 14px; font-size: 12px; border-radius: 6px; background: #fff; color: #007AFF; border: 1px solid #007AFF; cursor: pointer; font-weight: 500; }
+  .size-btn:hover { background: #007AFF; color: #fff; }
+  h2 { color: #1d1d1f; }
+</style></head><body>
+<h2>🏗️ 通天塔 Icon — 导出 PNG</h2>
+<div class="preview">
+  <div><canvas id="c16" width="16" height="16"></canvas><div class="label">16×16</div></div>
+  <div><canvas id="c48" width="48" height="48"></canvas><div class="label">48×48</div></div>
+  <div><canvas id="c128" width="128" height="128"></canvas><div class="label">128×128</div></div>
+  <div><canvas id="c300" width="200" height="200" style="width:200px;height:200px"></canvas><div class="label">300×300</div></div>
+</div>
+<button onclick="exportAll()">📥 一键导出所有 PNG</button>
+<div class="sizes">
+  <button class="size-btn" onclick="exportSize(16)">16px</button>
+  <button class="size-btn" onclick="exportSize(48)">48px</button>
+  <button class="size-btn" onclick="exportSize(128)">128px</button>
+  <button class="size-btn" onclick="exportSize(300)">300px</button>
+</div>
+<p style="color:#86868b;font-size:12px">下载后替换 icons/ 目录下同名文件，16/48/128 用于 Chrome，300 用于商店上架</p>
+
+<script>
+var svgText =
+'<svg xmlns="http://www.w3.org/2000/svg" width="300" height="300" viewBox="0 0 300 300">' +
+'<defs>' +
+'<linearGradient id="bgGrad" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#4DA3FF"/><stop offset="100%" stop-color="#0055D4"/></linearGradient>' +
+'<linearGradient id="towerGrad" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#FFFFFF"/><stop offset="100%" stop-color="#E8F0FE"/></linearGradient>' +
+'</defs>' +
+'<rect x="0" y="0" width="300" height="300" rx="66" ry="66" fill="url(#bgGrad)"/>' +
+'<g transform="translate(150,72)"><rect x="-32" y="0" width="64" height="22" rx="5" fill="url(#towerGrad)" opacity=".95"/><circle cx="-10" cy="11" r="2.5" fill="#007AFF" opacity=".5"/><circle cx="0" cy="11" r="2.5" fill="#007AFF" opacity=".35"/><circle cx="10" cy="11" r="2.5" fill="#007AFF" opacity=".5"/></g>' +
+'<g transform="translate(150,100)"><rect x="-44" y="0" width="88" height="24" rx="6" fill="url(#towerGrad)" opacity=".95"/><circle cx="-16" cy="12" r="3" fill="#007AFF" opacity=".55"/><circle cx="0" cy="12" r="3" fill="#007AFF" opacity=".4"/><circle cx="16" cy="12" r="3" fill="#007AFF" opacity=".55"/></g>' +
+'<g transform="translate(150,130)"><rect x="-58" y="0" width="116" height="26" rx="7" fill="url(#towerGrad)" opacity=".95"/><circle cx="-24" cy="13" r="3.5" fill="#007AFF" opacity=".6"/><circle cx="-8" cy="13" r="3.5" fill="#007AFF" opacity=".45"/><circle cx="8" cy="13" r="3.5" fill="#007AFF" opacity=".45"/><circle cx="24" cy="13" r="3.5" fill="#007AFF" opacity=".6"/></g>' +
+'<g transform="translate(150,162)"><rect x="-74" y="0" width="148" height="28" rx="8" fill="url(#towerGrad)" opacity=".95"/><circle cx="-34" cy="14" r="4" fill="#007AFF" opacity=".65"/><circle cx="-16" cy="14" r="4" fill="#007AFF" opacity=".5"/><circle cx="0" cy="14" r="4" fill="#007AFF" opacity=".5"/><circle cx="16" cy="14" r="4" fill="#007AFF" opacity=".5"/><circle cx="34" cy="14" r="4" fill="#007AFF" opacity=".65"/></g>' +
+'<g transform="translate(150,196)"><rect x="-92" y="0" width="184" height="30" rx="9" fill="url(#towerGrad)" opacity=".95"/><circle cx="-46" cy="15" r="4.5" fill="#007AFF" opacity=".7"/><circle cx="-24" cy="15" r="4.5" fill="#007AFF" opacity=".55"/><circle cx="0" cy="15" r="4.5" fill="#007AFF" opacity=".55"/><circle cx="24" cy="15" r="4.5" fill="#007AFF" opacity=".55"/><circle cx="46" cy="15" r="4.5" fill="#007AFF" opacity=".7"/></g>' +
+'<ellipse cx="150" cy="232" rx="100" ry="8" fill="#FFFFFF" opacity=".15"/>' +
+'</svg>';
+
+function renderToCanvas(size, canvas) {
+  return new Promise(function(resolve) {
+    canvas.width = size; canvas.height = size;
+    var ctx = canvas.getContext('2d');
+    var data = 'data:image/svg+xml,' + encodeURIComponent(svgText);
+    var img = new Image();
+    img.onload = function() { ctx.drawImage(img, 0, 0, size, size); resolve(canvas); };
+    img.onerror = function() { console.error('Failed to load SVG for size', size); };
+    img.src = data;
+  });
+}
+
+function download(canvas, filename) {
+  canvas.toBlob(function(blob) {
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement('a');
+    a.href = url; a.download = filename;
+    document.body.appendChild(a); a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  });
+}
+
+async function exportAll() {
+  await exportSize(16, 'icon16.png');
+  await exportSize(48, 'icon48.png');
+  await exportSize(128, 'icon128.png');
+  await exportSize(300, 'icon300.png');
+}
+
+async function exportSize(size, name) {
+  name = name || ('icon' + size + '.png');
+  var canvas = document.createElement('canvas');
+  await renderToCanvas(size, canvas);
+  download(canvas, name);
+}
+
+// Initial preview
+(async function() {
+  await renderToCanvas(16, document.getElementById('c16'));
+  await renderToCanvas(48, document.getElementById('c48'));
+  await renderToCanvas(128, document.getElementById('c128'));
+  await renderToCanvas(300, document.getElementById('c300'));
+  // Scale down 300px canvas display
+  document.getElementById('c300').style.width = '200px';
+  document.getElementById('c300').style.height = '200px';
+})();
+</script>
+</body></html>

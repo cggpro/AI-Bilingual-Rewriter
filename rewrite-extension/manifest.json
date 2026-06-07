@@ -43,9 +43,6 @@
   ],
   "commands": {
     "rewrite-selection": {
-      "suggested_key": {
-        "default": "Alt+Shift+W"
-      },
       "description": "__MSG_cmdRewriteSelection__"
     }
   },
