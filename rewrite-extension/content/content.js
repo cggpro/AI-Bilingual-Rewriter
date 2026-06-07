@@ -9,6 +9,7 @@ var shiftPresses = [];
 var ctrlPresses = [];
 var ctrlComboUsed = false;
 var lastSelection = { text: '', element: null, info: null };
+var lastFocusedInput = null; // 追踪最后聚焦的输入框，避免百度建议层干扰
 var currentTargetLang = 'en'; // 'en' or 'zh'
 
 function initAiRewriter() { createFloatingCard(); setupListeners(); }
@@ -99,6 +100,14 @@ function createFloatingCard() {
 
 // ─── LISTENERS ───
 function setupListeners() {
+  // Track last focused input/textarea — handles Baidu/Google suggestion overlays
+  document.addEventListener('focus', function(e) {
+    var el = e.target;
+    if (el && (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.isContentEditable)) {
+      lastFocusedInput = el;
+    }
+  }, true);
+
   // Selection tracking
   document.addEventListener('mouseup', function(e) {
     setTimeout(function() {
@@ -211,28 +220,47 @@ function setupListeners() {
 }
 
 function captureCurrentSelection() {
-  var ae = document.activeElement;
-  if (ae && (ae.tagName === 'INPUT' || ae.tagName === 'TEXTAREA')) {
-    var s = ae.selectionStart, e = ae.selectionEnd;
+  // Try activeElement first, fall back to lastFocusedInput (handles Baidu suggestion overlay)
+  var el = getTargetInput();
+  if (el) {
+    var s = el.selectionStart, e = el.selectionEnd;
     if (s !== undefined && e !== undefined && s < e) {
-      lastSelection.text = ae.value.substring(s, e);
-      lastSelection.element = ae; lastSelection.info = getInfo(ae);
+      lastSelection.text = el.value.substring(s, e);
+      lastSelection.element = el; lastSelection.info = getInfo(el);
       return;
     }
   }
   updateLastSelection();
 }
 
-function updateLastSelection() {
+// Get the real input element, falling back to lastFocusedInput
+function getTargetInput() {
   var ae = document.activeElement;
-  if (ae && (ae.tagName === 'INPUT' || ae.tagName === 'TEXTAREA')) {
-    var s = ae.selectionStart, e = ae.selectionEnd;
+  if (ae && (ae.tagName === 'INPUT' || ae.tagName === 'TEXTAREA')) return ae;
+  if (lastFocusedInput) {
+    // Verify the tracked element is still in the DOM and has selection
+    if (document.contains(lastFocusedInput)) {
+      var s = lastFocusedInput.selectionStart, e = lastFocusedInput.selectionEnd;
+      if (s !== undefined && e !== undefined && s < e) return lastFocusedInput;
+    } else {
+      lastFocusedInput = null;
+    }
+  }
+  return null;
+}
+
+function updateLastSelection() {
+  // Try activeElement first, fall back to lastFocusedInput
+  var el = getTargetInput();
+  if (el) {
+    var s = el.selectionStart, e = el.selectionEnd;
     if (s !== undefined && e !== undefined && s < e) {
-      lastSelection.text = ae.value.substring(s, e);
-      lastSelection.element = ae; lastSelection.info = getInfo(ae);
+      lastSelection.text = el.value.substring(s, e);
+      lastSelection.element = el; lastSelection.info = getInfo(el);
       return;
     }
   }
+  var ae = document.activeElement;
   if (ae && (ae.isContentEditable || ae.closest('[contenteditable="true"]'))) {
     var sel = window.getSelection(), t = sel.toString().trim();
     if (t) { lastSelection.text = t; lastSelection.element = getTargetFromSelection(sel); lastSelection.info = getInfo(lastSelection.element); return; }
