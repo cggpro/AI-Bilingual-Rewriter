@@ -39,14 +39,6 @@
 2. 点击扩展图标 → ⚙️ 设置 → 填入 API Key
 3. 可选：选择模型（V4 Flash 快速 / V4 Pro 高质量）、调节温度、朗读语速
 
-## 🎹 快捷键
-
-| 操作 | 快捷键 |
-|------|--------|
-| 英文改写（网页选中文字后） | 双击 `Shift` |
-| 中文改写（网页选中文字后） | 双击 `Ctrl` |
-| 关闭浮动卡片 | `Esc` 或点击外部 |
-
 ## 🏗️ 技术架构
 
 - **前端**：纯原生 JavaScript（无框架），Apple HIG 设计风格 CSS（支持明暗色模式）
@@ -74,7 +66,7 @@ rewrite-extension/
 │   ├── panel.js               # 改写逻辑、历史管理
 │   └── panel.css              # 面板样式
 ├── background/                # Service Worker
-│   └── service-worker.js      # 右键菜单、快捷键、消息路由
+│   └── service-worker.js      # 右键菜单、消息路由、设置页打开
 ├── settings/                  # 设置页
 │   ├── settings.html          # UI 结构
 │   ├── settings.js            # 配置读写

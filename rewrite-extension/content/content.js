@@ -27,7 +27,7 @@ function createFloatingCard() {
     { key: 'formal', icon: '🏛️', labelEn: 'Formal', labelZh: '正式', hintEn: 'professional tone', hintZh: '专业商务书面表达' }
   ];
 
-  var h = '<div class="card-header"><span class="card-header-text" id="cardTitle">Rewrite</span><button class="card-speak-original" id="cardSpeakOriginal" title="朗读原文">🔊</button><button class="card-close">×</button></div>';
+  var h = '<div class="card-header"><span class="card-header-text" id="cardTitle">Rewrite</span><button class="card-speak-original" id="cardSpeakOriginal" title="朗读原文">🔊</button><button class="card-settings-btn" id="cardSettingsBtn" title="设置">⚙️</button><button class="card-close">×</button></div>';
   h += '<div class="card-preview" id="cardPreview"></div><div class="card-results">';
 
   styles.forEach(function(s) {
@@ -52,6 +52,46 @@ function createFloatingCard() {
   document.body.appendChild(floatingCard);
 
   floatingCard.querySelector('.card-close').addEventListener('click', hideCard);
+  floatingCard.querySelector('#cardSettingsBtn').addEventListener('click', function(e) {
+    e.stopPropagation();
+    console.log('[rewrite] Settings button clicked');
+    var settingsUrl = chrome.runtime.getURL('settings/settings.html');
+    var done = false;
+    // Try sending message to service worker first
+    try {
+      chrome.runtime.sendMessage({ action: 'openOptionsPage' }, function(response) {
+        if (!done) {
+          done = true;
+          if (chrome.runtime.lastError) {
+            console.warn('[rewrite] SW message failed, using direct open:', chrome.runtime.lastError.message);
+            openSettingsDirect(settingsUrl);
+          } else {
+            console.log('[rewrite] SW opened settings:', response);
+          }
+        }
+      });
+    } catch (err) {
+      console.warn('[rewrite] sendMessage threw, using direct open:', err);
+      if (!done) { done = true; openSettingsDirect(settingsUrl); }
+    }
+    // Fallback: if SW doesn't respond within 500ms, open directly
+    setTimeout(function() {
+      if (!done) {
+        done = true;
+        console.warn('[rewrite] SW timeout, opening directly');
+        openSettingsDirect(settingsUrl);
+      }
+    }, 500);
+    function openSettingsDirect(url) {
+      var a = document.createElement('a');
+      a.href = url;
+      a.target = '_blank';
+      a.rel = 'noopener';
+      document.body.appendChild(a);
+      a.click();
+      setTimeout(function() { document.body.removeChild(a); }, 100);
+    }
+  });
   floatingCard.querySelector('#cardSpeakOriginal').addEventListener('click', function() {
     var text = selectionText;
     if (!text) return;
@@ -204,6 +244,15 @@ function setupListeners() {
 
   // Messages from service worker
   chrome.runtime.onMessage.addListener(function(m, s, r) {
+    if (m.action === 'getSelection') {
+      var sel = window.getSelection().toString().trim();
+      var ae = document.activeElement;
+      if (!sel && ae && (ae.tagName === 'INPUT' || ae.tagName === 'TEXTAREA')) {
+        sel = ae.value.substring(ae.selectionStart || 0, ae.selectionEnd || 0);
+      }
+      r({ text: sel });
+      return true;
+    }
     if (m.action === 'replaceText') {
       var el = targetElement;
       if (!el && m.elementInfo) { try { el = document.querySelector(m.elementInfo.selector); } catch (e) { /* */ } }

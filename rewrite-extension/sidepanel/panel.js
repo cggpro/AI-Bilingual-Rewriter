@@ -9,6 +9,22 @@ document.addEventListener('DOMContentLoaded', async function() {
     if (r.pending_tab_id) pendingTabId = r.pending_tab_id;
     chrome.storage.session.remove(['pending_selected_text', 'pending_style', 'pending_tab_id']);
   } catch (e) { /* */ }
+
+  // If no text from session storage, try to get selection from active tab
+  if (!$('sourceText').value.trim()) {
+    try {
+      var tabs = await chrome.tabs.query({ active: true, currentWindow: true });
+      if (tabs.length && tabs[0].id) {
+        pendingTabId = tabs[0].id;
+        var resp = await chrome.tabs.sendMessage(tabs[0].id, { action: 'getSelection' });
+        if (resp && resp.text) {
+          $('sourceText').value = resp.text;
+          $('rewriteBtn').disabled = false;
+        }
+      }
+    } catch (e) { /* content script not ready or page restricted, ignore */ }
+  }
+
   setupEvents();
 });
 
@@ -63,8 +79,8 @@ function setupEvents() {
     });
   });
 
-  $('settingsBtn').addEventListener('click', function() { chrome.runtime.openOptionsPage(); });
-  $('openSettings').addEventListener('click', function(e) { e.preventDefault(); chrome.runtime.openOptionsPage(); });
+  $('settingsBtn').addEventListener('click', function() { chrome.tabs.create({ url: chrome.runtime.getURL('settings/settings.html') }); });
+  $('openSettings').addEventListener('click', function(e) { e.preventDefault(); chrome.tabs.create({ url: chrome.runtime.getURL('settings/settings.html') }); });
   $('historyToggle').addEventListener('click', toggleHistory);
   $('clearHistoryBtn').addEventListener('click', clearHistory);
   document.addEventListener('keydown', function(e) { if (e.key === 'Escape' && !$('historyPanel').classList.contains('hidden')) { $('historyPanel').classList.add('hidden'); $('resultsArea').classList.remove('hidden'); } });

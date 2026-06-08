@@ -1,4 +1,9 @@
-importScripts('shared/constants.js', 'shared/logger.js', 'shared/prompts.js', 'shared/api.js', 'shared/rewrite-service.js', 'shared/tts.js');
+try {
+  importScripts('shared/constants.js', 'shared/logger.js', 'shared/prompts.js', 'shared/api.js', 'shared/rewrite-service.js');
+  console.log('[rewrite] service-worker started successfully');
+} catch (e) {
+  console.error('[rewrite] service-worker importScripts failed:', e);
+}
 
 // --- CONTEXT MENU ---
 chrome.runtime.onInstalled.addListener(function() {
@@ -12,39 +17,22 @@ chrome.runtime.onInstalled.addListener(function() {
 });
 
 chrome.contextMenus.onClicked.addListener(function(info, tab) {
-  if (info.menuItemId === 'ai-settings') { chrome.runtime.openOptionsPage(); return; }
+  if (info.menuItemId === 'ai-settings') { chrome.tabs.create({ url: chrome.runtime.getURL('settings/settings.html') }); return; }
   if (!info.selectionText) return;
   var map = { 'ai-style-close': 'close', 'ai-style-casual': 'casual', 'ai-style-formal': 'formal' };
   var style = map[info.menuItemId];
   if (style) openSidePanelWithText(tab, info.selectionText, style);
 });
 
-// --- KEYBOARD COMMAND ---
-chrome.commands.onCommand.addListener(async function(command) {
-  if (command !== 'rewrite-selection') return;
-  try {
-    var tabs = await chrome.tabs.query({ active: true, currentWindow: true });
-    if (!tabs.length) return;
-    var tab = tabs[0];
-    var text = '';
-    try {
-      var results = await chrome.scripting.executeScript({
-        target: { tabId: tab.id },
-        func: function() { return window.getSelection().toString(); }
-      });
-      if (results && results[0] && results[0].result) {
-        text = results[0].result.trim();
-      }
-    } catch (e) {
-      // Can't inject script on this page (e.g. chrome://, edge://) — still open side panel
-    }
-    await openSidePanelWithText(tab, text || null, null);
-  } catch (e) { /* */ }
-});
-
 // --- MESSAGING ---
 chrome.runtime.onMessage.addListener(function(message, sender, sendResponse) {
   switch (message.action) {
+    case 'openOptionsPage':
+      console.log('[rewrite] service-worker received openOptionsPage');
+      chrome.tabs.create({ url: chrome.runtime.getURL('settings/settings.html') });
+      sendResponse({ success: true });
+      return true;
+
     case 'openSidePanel':
       handleOpenSidePanel(message, sender, sendResponse);
       break;

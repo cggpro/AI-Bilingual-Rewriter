@@ -41,11 +41,6 @@
       "match_about_blank": false
     }
   ],
-  "commands": {
-    "rewrite-selection": {
-      "description": "__MSG_cmdRewriteSelection__"
-    }
-  },
   "options_ui": {
     "page": "settings/settings.html",
     "open_in_tab": true

@@ -42,7 +42,8 @@
   letter-spacing: -0.01em;
 }
 
-#ai-rewriter-floating-card .card-speak-original {
+#ai-rewriter-floating-card .card-speak-original,
+#ai-rewriter-floating-card .card-settings-btn {
   width: 24px;
   height: 24px;
   border: none;
@@ -59,7 +60,8 @@
   margin-right: 4px;
 }
 
-#ai-rewriter-floating-card .card-speak-original:hover {
+#ai-rewriter-floating-card .card-speak-original:hover,
+#ai-rewriter-floating-card .card-settings-btn:hover {
   background: rgba(0, 122, 255, 0.1);
   color: #007AFF;
 }
@@ -325,12 +327,14 @@
     color: #F5F5F7;
   }
 
-  #ai-rewriter-floating-card .card-speak-original {
+  #ai-rewriter-floating-card .card-speak-original,
+  #ai-rewriter-floating-card .card-settings-btn {
     background: rgba(255, 255, 255, 0.08);
     color: #98989D;
   }
 
-  #ai-rewriter-floating-card .card-speak-original:hover {
+  #ai-rewriter-floating-card .card-speak-original:hover,
+  #ai-rewriter-floating-card .card-settings-btn:hover {
     background: rgba(10, 132, 255, 0.15);
     color: #0A84FF;
   }
