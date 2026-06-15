@@ -1,5 +1,5 @@
 {
   "appName": { "message": "AI Bilingual Rewriter" },
-  "appDesc": { "message": "Rewrite Chinese & English text with DeepSeek AI. Streaming output, voice reading, three styles (Close/Casual/Formal). Double-Shift/Ctrl to activate." },
+  "appDesc": { "message": "Rewrite Chinese & English text with DeepSeek AI. Streaming output, voice reading (auto-detects language), three styles (Close/Casual/Formal). Double-Shift/Ctrl for the floating card; right-click menu or Alt+X for the side panel." },
   "openPanel": { "message": "Open AI Rewriter" }
 }

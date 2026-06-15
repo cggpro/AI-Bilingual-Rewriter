@@ -1,6 +1,6 @@
 # AI 双语改写器 / AI Bilingual Rewriter
 
-使用 **DeepSeek AI** 驱动的 Chrome 浏览器扩展，智能改写/翻译中英文文本。像一位随身写作教练——不仅改写，还告诉你为什么这样改。
+使用 **DeepSeek AI** 驱动的 Chrome / Edge 浏览器扩展，智能改写/翻译中英文文本。像一位随身写作教练——不仅改写，还告诉你为什么这样改。
 
 ## ✨ 核心功能
 
@@ -10,39 +10,44 @@
   - 🏛️ **正式** — 专业商务书面表达
 - **AI 教学反馈**：每次改写附带中文"教学注记"，像老师在批改作文
 - **流式实时输出**：文字逐字出现，无需等待完整响应
-- **🔊 语音朗读**：Web Speech API 驱动，支持原文和改写结果朗读，语速可调
+- **🔊 语音朗读**：Web Speech API 驱动，支持原文和改写结果朗读，语速可调；自动识别中英文并匹配对应语音
 - **原地替换**：改写结果直接替换网页上选中的原文本（支持 input / textarea / contentEditable）
-- **两种触发方式**：
-  - 选中文字 → **双击 Shift**（英文输出）/ **双击 Ctrl**（中文输出）
-  - 右键菜单 → 侧边栏改写
+- **三种触发方式**：
+  - 选中文字 → **双击 Shift**（英文输出）/ **双击 Ctrl**（中文输出）→ 弹出浮动卡片
+  - 选中文字 → 右键菜单 → 选风格 → 侧边栏自动打开并改写
+  - **Alt+X**（或点击工具栏图标）→ 打开侧边栏面板
 
 ## 🛡️ 可靠性
 
-- **自动重试**：API 错误时指数退避重试（最多 3 次）
-- **智能解析**：7 层降级解析器，兼容模型 JSON 格式偏差
-- **结构化日志**：所有 API 错误记录到本地存储，便于排查
+- **自动重试**：API 临时错误时指数退避重试（最多 3 次），单次请求自带超时
+- **省配额设计**：关闭浮动卡片时自动取消进行中的请求，不浪费 DeepSeek 配额
+- **智能解析**：7 层降级解析器，兼容模型 JSON 格式偏差（含转义引号边界处理）
+- **输入校验**：温度自动钳制到 DeepSeek 合法范围（0–2），避免无效值触发 API 400
+- **并发安全**：历史记录写入带互斥锁，避免多风格并发请求时数据覆盖
 
 ## 🚀 安装
 
-### Chrome Web Store（推荐）
-> 即将上架
+### Chrome Web Store / Edge Add-ons（推荐）
+
+> Chrome 商店与 Edge 扩展商店均已上架（或即将上架）
 
 ### 开发者模式加载
 1. 下载或克隆本仓库
-2. 打开 Chrome → `chrome://extensions`
+2. 打开 Chrome → `chrome://extensions`，或 Edge → `edge://extensions`
 3. 开启「开发者模式」
-4. 点击「加载已解压的扩展程序」→ 选择 `rewrite-extension/` 目录
+4. 点击「加载已解压的扩展程序」/「加载解压缩的扩展」→ 选择 `rewrite-extension/` 目录
 
 ## ⚙️ 配置
 
 1. 在 [DeepSeek Platform](https://platform.deepseek.com/api_keys) 获取 API Key
 2. 点击扩展图标 → ⚙️ 设置 → 填入 API Key
 3. 可选：选择模型（V4 Flash 快速 / V4 Pro 高质量）、调节温度、朗读语速
+4. 可选：在 `chrome://extensions/shortcuts`（或 `edge://extensions/shortcuts`）自定义打开面板的快捷键（默认 Alt+X）
 
 ## 🏗️ 技术架构
 
 - **前端**：纯原生 JavaScript（无框架），Apple HIG 设计风格 CSS（支持明暗色模式）
-- **平台**：Chrome Extension Manifest V3
+- **平台**：Chrome / Edge Extension Manifest V3
 - **API**：DeepSeek Chat Completions（`deepseek-v4-flash` / `deepseek-v4-pro`）
 - **语音**：Web Speech API（浏览器内置，离线可用）
 
@@ -66,7 +71,7 @@ rewrite-extension/
 │   ├── panel.js               # 改写逻辑、历史管理
 │   └── panel.css              # 面板样式
 ├── background/                # Service Worker
-│   └── service-worker.js      # 右键菜单、消息路由、设置页打开
+│   └── service-worker.js      # 右键菜单、侧边栏打开、消息路由、历史保存
 ├── settings/                  # 设置页
 │   ├── settings.html          # UI 结构
 │   ├── settings.js            # 配置读写

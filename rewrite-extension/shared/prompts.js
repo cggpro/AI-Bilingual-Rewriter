@@ -104,14 +104,17 @@ function parseRewriteResponse(raw) {
   // ── 4. Regex extraction of "text" and "note" key-value pairs ──
   // Handles: "text": "...", "note": "..."  (standard quotes, possibly in Chinese-quoted text)
   // Also handles: "text"："...", "note"："..."  (mixed quotes)
+  // The value pattern (?:[^"\\]|\\.)* correctly spans escaped quotes (\")
+  // and escaped backslashes (\\) inside the value, so a value containing a
+  // literal escaped quote is not truncated prematurely.
   var textMatch = null;
   var noteMatch = null;
 
   // Try matching standard JSON key-value: "text":"..."
-  var jt = normalized.match(/"text"\s*:\s*"([\s\S]*?)"(?=\s*(?:,\s*"note"|$))/);
+  var jt = normalized.match(/"text"\s*:\s*"((?:[^"\\]|\\.)*)"/);
   if (jt) textMatch = jt[1];
 
-  var jn = normalized.match(/"note"\s*:\s*"([\s\S]*?)"\s*$/);
+  var jn = normalized.match(/"note"\s*:\s*"((?:[^"\\]|\\.)*)"\s*\}?\s*$/);
   if (jn) noteMatch = jn[1];
 
   // If regex extraction found text, use it

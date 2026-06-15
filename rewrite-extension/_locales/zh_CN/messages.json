@@ -1,5 +1,5 @@
 {
   "appName": { "message": "AI 双语改写器" },
-  "appDesc": { "message": "使用 DeepSeek AI 智能改写中英文文本。流式输出、语音朗读、三种风格（贴近原文/口语化/正式），双击 Shift/Ctrl 极速唤起" },
+  "appDesc": { "message": "使用 DeepSeek AI 智能改写中英文文本。流式输出、语音朗读（自动识别中英文）、三种风格（贴近原文/口语化/正式）。双击 Shift/Ctrl 弹出浮动卡片，右键菜单或 Alt+X 打开侧边栏" },
   "openPanel": { "message": "打开 AI 改写面板" }
 }

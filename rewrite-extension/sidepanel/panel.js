@@ -3,10 +3,17 @@ var sideResults = {};
 var pendingTabId = null;
 
 document.addEventListener('DOMContentLoaded', async function() {
+  var pendingText = null;
   try {
-    var r = await chrome.storage.session.get(['pending_selected_text', 'pending_tab_id']);
-    if (r.pending_selected_text) { $('sourceText').value = r.pending_selected_text; $('rewriteBtn').disabled = false; }
+    var r = await chrome.storage.session.get(['pending_selected_text', 'pending_style', 'pending_tab_id']);
+    if (r.pending_selected_text) {
+      pendingText = r.pending_selected_text;
+      $('sourceText').value = r.pending_selected_text;
+      $('rewriteBtn').disabled = false;
+    }
     if (r.pending_tab_id) pendingTabId = r.pending_tab_id;
+    // pending_style is consumed implicitly: sidepanel output is always English.
+    // Clear the session keys once read.
     chrome.storage.session.remove(['pending_selected_text', 'pending_style', 'pending_tab_id']);
   } catch (e) { /* */ }
 
@@ -26,6 +33,12 @@ document.addEventListener('DOMContentLoaded', async function() {
   }
 
   setupEvents();
+
+  // Auto-trigger rewrite when launched from the context menu with selected text.
+  // This honors pending_selected_text instead of just pre-filling the textarea.
+  if (pendingText && pendingText.trim()) {
+    doRewrite(pendingText.trim());
+  }
 });
 
 function setupEvents() {
@@ -112,7 +125,9 @@ async function callApi(style, text) {
     var model = stg[STORAGE_KEYS.MODEL] || 'deepseek-v4-flash';
     var temp = stg[STORAGE_KEYS.TEMPERATURE] != null ? parseFloat(stg[STORAGE_KEYS.TEMPERATURE]) : 0.7;
 
-    var ctrl = new AbortController(); var tid = setTimeout(function() { ctrl.abort(); }, 30000);
+    // No external AbortController/timeout: rewrite-service.js owns per-attempt
+    // timeout (REWRITE_TIMEOUT_MS) and the retry loop. An external timeout
+    // would abort retries prematurely.
     var panelContent = $('rpContent-' + style);
 
     var result = await rewriteText({
@@ -123,13 +138,11 @@ async function callApi(style, text) {
       model: model,
       temperature: temp,
       stream: true,
-      signal: ctrl.signal,
       onToken: function(delta, accumulated) {
         if (panelContent) panelContent.textContent = accumulated;
       }
     });
 
-    clearTimeout(tid);
     $('rpLoading-' + style).classList.add('done');
 
     sideResults[style] = result.text;
@@ -141,7 +154,7 @@ async function callApi(style, text) {
 
   } catch (e) {
     $('rpLoading-' + style).classList.add('done');
-    showSErr(style, e.name === 'AbortError' ? '请求超时（30秒），请检查网络后重试' : (e.message || '网络错误'));
+    showSErr(style, (e && e.name === 'AbortError') ? '请求超时，请检查网络后重试' : ((e && e.message) || '网络错误'));
     setSStat(style, '失败');
   }
   checkDone();
@@ -182,7 +195,19 @@ async function loadHistory() {
     list.appendChild(div);
   });
   list.querySelectorAll('.history-copy-btn').forEach(function(b) { b.addEventListener('click', function() { doCopy(decodeURIComponent(b.dataset.text), b); }); });
-  list.querySelectorAll('.history-delete-btn').forEach(function(b) { b.addEventListener('click', function() { entries = entries.filter(function(x) { return x.id !== b.dataset.id; }); chrome.storage.local.set({ [STORAGE_KEYS.HISTORY]: entries }); loadHistory(); }); });
+  // Re-read current history on each delete to avoid races between rapid
+  // successive deletes sharing a stale closure over `entries`.
+  list.querySelectorAll('.history-delete-btn').forEach(function(b) {
+    b.addEventListener('click', async function() {
+      try {
+        var id = b.dataset.id;
+        var rr = await chrome.storage.local.get(STORAGE_KEYS.HISTORY);
+        var cur = (rr[STORAGE_KEYS.HISTORY] || []).filter(function(x) { return x.id !== id; });
+        await chrome.storage.local.set({ [STORAGE_KEYS.HISTORY]: cur });
+        loadHistory();
+      } catch (e) { /* ignore */ }
+    });
+  });
 }
 async function clearHistory() { if (!confirm('确定清除全部历史记录？')) return; var s = {}; s[STORAGE_KEYS.HISTORY] = []; await chrome.storage.local.set(s); loadHistory(); }
 

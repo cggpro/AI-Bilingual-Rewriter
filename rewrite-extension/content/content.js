@@ -11,8 +11,16 @@ var ctrlComboUsed = false;
 var lastSelection = { text: '', element: null, info: null };
 var lastFocusedInput = null; // 追踪最后聚焦的输入框，避免百度建议层干扰
 var currentTargetLang = 'en'; // 'en' or 'zh'
+var activeRequests = {};      // style -> AbortController, 用于在 hideCard 时取消在途请求
 
-function initAiRewriter() { createFloatingCard(); setupListeners(); }
+function initAiRewriter() {
+  // 消息监听在所有 frame 注册：iframe 编辑器仍需响应 getSelection/replaceText
+  setupMessageListeners();
+  // UI 与手势监听仅在顶层 frame，避免每个 iframe 重复创建卡片和监听器
+  if (window.self !== window.top) return;
+  createFloatingCard();
+  setupUiListeners();
+}
 initAiRewriter();
 
 // ─── CREATE CARD ───
@@ -133,13 +141,15 @@ function createFloatingCard() {
   floatingCard.querySelectorAll('.panel-replace-btn').forEach(function(btn) {
     btn.addEventListener('click', function(e) { e.stopPropagation(); doReplace(btn.dataset.style, btn); });
   });
+}
+
+// ─── UI LISTENERS (top frame only) ───
+function setupUiListeners() {
+  // Card dismissal on outside interaction
   document.addEventListener('mousedown', function(e) { if (isCardVisible && !floatingCard.contains(e.target)) hideCard(); });
   document.addEventListener('keydown', function(e) { if (e.key === 'Escape' && isCardVisible) hideCard(); });
   document.addEventListener('scroll', function(e) { if (isCardVisible && !floatingCard.contains(e.target)) hideCard(); }, true);
-}
 
-// ─── LISTENERS ───
-function setupListeners() {
   // Track last focused input/textarea — handles Baidu/Google suggestion overlays
   document.addEventListener('focus', function(e) {
     var el = e.target;
@@ -177,7 +187,7 @@ function setupListeners() {
         updateLastSelection();
       }, 100);
     }
-    if (e.key.startsWith('Arrow') && e.shiftKey) { setTimeout(updateLastSelection, 80); }
+    if (e.key && typeof e.key === 'string' && e.key.indexOf('Arrow') === 0 && e.shiftKey) { setTimeout(updateLastSelection, 80); }
     if (e.key === 'Shift') {
       var cutoff = Date.now() - 800;
       shiftPresses = shiftPresses.filter(function(t) { return t > cutoff; });
@@ -241,7 +251,10 @@ function setupListeners() {
       ctrlPresses = ctrlPresses.filter(function(t) { return t > cutoff; });
     }
   }, true);
+}
 
+// ─── MESSAGE LISTENERS (all frames) ───
+function setupMessageListeners() {
   // Messages from service worker
   chrome.runtime.onMessage.addListener(function(m, s, r) {
     if (m.action === 'getSelection') {
@@ -382,7 +395,18 @@ function showCard(text, targetLang) {
     callDeepSeek(s, text, currentTargetLang);
   });
 }
-function hideCard() { TTS.stop(); floatingCard.style.display = 'none'; isCardVisible = false; }
+function hideCard() {
+  TTS.stop();
+  // Cancel any in-flight rewrite requests so closing the card stops
+  // consuming DeepSeek quota. (Per-attempt timeout is handled internally
+  // by rewrite-service.js via REWRITE_TIMEOUT_MS.)
+  Object.keys(activeRequests).forEach(function(style) {
+    try { activeRequests[style].abort(); } catch (e) { /* ignore */ }
+    delete activeRequests[style];
+  });
+  floatingCard.style.display = 'none';
+  isCardVisible = false;
+}
 function resetSpeakBtn(btn) { btn.textContent = '🔊'; btn.classList.remove('speaking'); }
 function resetAllSpeakBtns() {
   var btns = floatingCard.querySelectorAll('.panel-speak-btn');
@@ -407,42 +431,49 @@ async function callDeepSeek(style, text, targetLang) {
     var model = stg[STORAGE_KEYS.MODEL] || 'deepseek-v4-flash';
     var temp = stg[STORAGE_KEYS.TEMPERATURE] != null ? parseFloat(stg[STORAGE_KEYS.TEMPERATURE]) : 0.7;
 
+    // AbortController is tracked in activeRequests so hideCard() can cancel
+    // in-flight requests. We intentionally do NOT add an external setTimeout
+    // timeout here — rewrite-service.js owns per-attempt timeout + retry.
+    // An external timeout would abort the retry loop prematurely.
     var ctrl = new AbortController();
-    var tid = setTimeout(function() { ctrl.abort(); }, 30000);
+    activeRequests[style] = ctrl;
     var panelContent = document.getElementById('panelContent-' + style);
 
-    var result = await rewriteText({
-      text: text,
-      style: style,
-      targetLang: targetLang,
-      apiKey: apiKey,
-      model: model,
-      temperature: temp,
-      stream: true,
-      signal: ctrl.signal,
-      onToken: function(delta, accumulated) {
-        if (panelContent) panelContent.textContent = accumulated;
+    try {
+      var result = await rewriteText({
+        text: text,
+        style: style,
+        targetLang: targetLang,
+        apiKey: apiKey,
+        model: model,
+        temperature: temp,
+        stream: true,
+        signal: ctrl.signal,
+        onToken: function(delta, accumulated) {
+          if (panelContent) panelContent.textContent = accumulated;
+        }
+      });
+
+      document.getElementById('panelLoading-' + style).classList.add('done');
+
+      cardResults[style] = result.text;
+      cardNotes[style] = result.note || '';
+      saveToHistory(text, result.text, style, result.note || '');
+      document.getElementById('panelContent-' + style).textContent = result.text;
+      if (result.note) {
+        document.getElementById('panelNote-' + style).textContent = result.note;
+        document.getElementById('panelNote-' + style).classList.add('visible');
       }
-    });
-
-    clearTimeout(tid);
-    document.getElementById('panelLoading-' + style).classList.add('done');
-
-    cardResults[style] = result.text;
-    cardNotes[style] = result.note || '';
-    saveToHistory(text, result.text, style, result.note || '');
-    document.getElementById('panelContent-' + style).textContent = result.text;
-    if (result.note) {
-      document.getElementById('panelNote-' + style).textContent = result.note;
-      document.getElementById('panelNote-' + style).classList.add('visible');
+      document.getElementById('panelActions-' + style).classList.add('visible');
+      var rb = floatingCard.querySelector('.panel-replace-btn[data-style="' + style + '"]');
+      if (rb) rb.style.display = (targetElement || targetElementInfo) ? '' : 'none';
+      setStatus(style, '✓ 完成');
+    } finally {
+      delete activeRequests[style];
     }
-    document.getElementById('panelActions-' + style).classList.add('visible');
-    var rb = floatingCard.querySelector('.panel-replace-btn[data-style="' + style + '"]');
-    if (rb) rb.style.display = (targetElement || targetElementInfo) ? '' : 'none';
-    setStatus(style, '✓ 完成');
   } catch (e) {
     document.getElementById('panelLoading-' + style).classList.add('done');
-    showErr(style, e.name === 'AbortError' ? '请求超时（30秒），请检查网络后重试' : (e.message || '网络错误'));
+    showErr(style, e.name === 'AbortError' ? '请求超时，请检查网络后重试' : (e.message || '网络错误'));
     setStatus(style, '失败');
   }
 }

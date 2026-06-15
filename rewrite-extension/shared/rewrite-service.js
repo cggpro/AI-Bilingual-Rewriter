@@ -31,6 +31,13 @@ function rewriteText(options) {
   var model = options.model || (typeof API_CONFIG !== 'undefined' ? API_CONFIG.MODEL : 'deepseek-v4-flash');
   var temperature = options.temperature != null ? options.temperature :
     (typeof API_CONFIG !== 'undefined' ? API_CONFIG.TEMPERATURE : 0.7);
+  // Clamp temperature to DeepSeek's valid range to guard against corrupt or
+  // out-of-range stored values that would trigger an API 400.
+  if (typeof temperature === 'number' && !isNaN(temperature)) {
+    temperature = Math.max(0, Math.min(2, temperature));
+  } else {
+    temperature = 0.7;
+  }
   var useStream = options.stream !== false; // default true
   var externalSignal = options.signal;
   var onToken = options.onToken || function() {};
@@ -207,10 +214,25 @@ function streamRequest(apiKey, model, messages, temperature, signal, onToken) {
       });
     }
 
-    // Browser lacks ReadableStream — degrade to non-streaming
+    // Browser lacks ReadableStream — degrade gracefully using the SAME
+    // response we already have (avoids re-issuing the fetch and wasting a
+    // second API call). We read the body once and feed it to onToken so the
+    // caller's streaming UI still receives the full text.
     if (!resp.body || !resp.body.getReader) {
-      Logger.info('api', 'ReadableStream not available, falling back to non-streaming');
-      return normalRequest(apiKey, model, messages, temperature, signal);
+      Logger.info('api', 'ReadableStream not available, reading body once');
+      return resp.text().then(function(raw) {
+        var parsed;
+        try {
+          var data = JSON.parse(raw);
+          var content = data.choices && data.choices[0] && data.choices[0].message && data.choices[0].message.content;
+          if (content) {
+            if (typeof onToken === 'function') onToken(content, content);
+            parsed = parseRewriteResponse(content);
+          }
+        } catch (e) { /* fall through to parse raw */ }
+        if (!parsed) parsed = parseRewriteResponse(raw);
+        return parsed;
+      });
     }
 
     var reader = resp.body.getReader();

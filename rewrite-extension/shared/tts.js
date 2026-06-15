@@ -7,6 +7,22 @@ var TTS = (function() {
   var _currentCallbacks = null;
   var _currentLang = 'en-US';
   var _currentRate = 0.85;
+  var _cachedVoices = null;  // populated lazily/asynchronously below
+
+  // Pre-warm the voice list. Chrome loads speechSynthesis voices
+  // asynchronously and only fires `voiceschanged` once they're ready. By
+  // kicking this off at module load, voices are usually available by the
+  // time the user first clicks speak, so the very first utterance gets the
+  // correct voice instead of the browser default.
+  if (typeof window !== 'undefined' && window.speechSynthesis) {
+    var warmVoices = window.speechSynthesis.getVoices();
+    if (warmVoices && warmVoices.length) {
+      _cachedVoices = warmVoices;
+    }
+    window.speechSynthesis.addEventListener('voiceschanged', function() {
+      _cachedVoices = window.speechSynthesis.getVoices();
+    });
+  }
 
   // ─── Public API ───
 
@@ -66,7 +82,10 @@ var TTS = (function() {
    * @returns {'zh-CN' | 'en-US'}
    */
   function detectLang(text) {
-    var cjkCount = (text.match(/[一-鿿㐀-䶿　-〿＀-￯]/g) || []).length;
+    // Match only CJK ideographs (\u4e00-\u9fff). Do NOT count CJK punctuation
+    // (\u3000-\u303f) or fullwidth ASCII (\uff00-\uffef) — those would let
+    // pure-English text with fullwidth punctuation be misclassified as Chinese.
+    var cjkCount = (text.match(/[\u4e00-\u9fff]/g) || []).length;
     var total = text.replace(/\s/g, '').length;
     if (total === 0) return 'en-US';
     return (cjkCount / total) >= 0.3 ? 'zh-CN' : 'en-US';
@@ -186,14 +205,20 @@ var TTS = (function() {
   }
 
   function trySetVoice(utterance, lang) {
-    // Try to get voices; Chrome loads them asynchronously
-    var voices = window.speechSynthesis.getVoices();
+    // Prefer the cached voice list (kept warm by the voiceschanged handler).
+    var voices = _cachedVoices;
     if (!voices || voices.length === 0) {
-      // Voices not loaded yet — Chrome needs the voiceschanged event.
-      // We'll try once; if not available, the browser default will be used.
+      voices = window.speechSynthesis.getVoices();
+      if (voices && voices.length) _cachedVoices = voices;
+    }
+    if (!voices || voices.length === 0) {
+      // Voices not loaded yet — retry once when they become available.
+      // For the in-flight utterance this may be too late, but subsequent
+      // chunks (and any future speaks) will use the now-warmed cache.
       window.speechSynthesis.addEventListener('voiceschanged', function retry() {
         window.speechSynthesis.removeEventListener('voiceschanged', retry);
-        setBestVoice(utterance, window.speechSynthesis.getVoices(), lang);
+        _cachedVoices = window.speechSynthesis.getVoices();
+        setBestVoice(utterance, _cachedVoices, lang);
       }, { once: true });
       return;
     }
